@@ -1,26 +1,40 @@
 package me.manolopro3333.custompanels.client.gui;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import me.manolopro3333.custompanels.Custompanels;
 import me.manolopro3333.custompanels.config.PanelConfigLoader;
 import me.manolopro3333.custompanels.network.TestButtonMessage;
 import me.manolopro3333.custompanels.world.inventory.TestPanelMenu;
-import me.manolopro3333.custompanels.Custompanels;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.network.chat.Component;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import com.mojang.blaze3d.systems.RenderSystem;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 public class TestPanelScreen extends AbstractContainerScreen<TestPanelMenu> {
     private final Level world;
     private final int x, y, z;
     private final String panelName;
-    private final Map<String, String> configData;
+    private Map<String, String> configData;
+
+    private int currentPage = 0;
+    private int totalPages = 0;
+
+    private static final float BUTTON_AREA_TOP_RATIO = 0.15f;
+    private static final float BUTTON_AREA_SIDE_RATIO = 0.05f;
+    private static final float PAGINATOR_Y_RATIO = 0.95f;
+    private static final float PAGINATOR_X_MARGIN_RATIO = 0.05f;
 
     public TestPanelScreen(TestPanelMenu container, Inventory inventory, Component text) {
         super(container, inventory, text);
@@ -29,8 +43,15 @@ public class TestPanelScreen extends AbstractContainerScreen<TestPanelMenu> {
         this.y = container.y;
         this.z = container.z;
         this.panelName = container.panelName;
-        this.configData = PanelConfigLoader.loadConfig(panelName, container.world);
-        // Tamaño base o resolución personalizada
+        reloadConfig();
+        setSizeFromConfig();
+    }
+
+    private void reloadConfig() {
+        this.configData = PanelConfigLoader.loadConfig(panelName, world);
+    }
+
+    private void setSizeFromConfig() {
         String res = configData.getOrDefault("Main.resolution", "176x166");
         try {
             String[] parts = res.split("x");
@@ -40,41 +61,28 @@ public class TestPanelScreen extends AbstractContainerScreen<TestPanelMenu> {
             this.imageWidth = 176;
             this.imageHeight = 166;
         }
-
-
     }
 
     @Override
-    public void render(@NotNull GuiGraphics gg, int mouseX, int mouseY, float pt) {
-        this.renderBackground(gg);
-        super.render(gg, mouseX, mouseY, pt);
-        this.renderTooltip(gg, mouseX, mouseY);
-    }
+    public void init() {
+        super.init();
+        reloadConfig();
+        clearWidgets();
 
-    @Override
-    public void renderBackground(GuiGraphics guiGraphics) {
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
+        this.leftPos = (width - imageWidth) / 2;
+        this.topPos = (height - imageHeight) / 2;
 
-
-        int transparencia;
-
-        try {
-            String rawValue = configData.getOrDefault("Main.BGTransparency", "35");
-
-            transparencia = Math.min(100, Math.max(0, Integer.parseInt(rawValue)));
-
-        } catch (NumberFormatException e) {
-            transparencia = 35;
+        if (menu.isEditMode) {
+            addEditControls();
         }
+        createButtons();
+    }
 
-        // 5. Calcular alpha (0 = transparente, 255 = opaco)
-        int alpha = (int) (transparencia / 100.0 * 255);
-        int argb = (alpha << 24); // Formato ARGB (Alpha en bits 24-31)
-
-        // 6. Aplicar fondo
-        guiGraphics.fillGradient(0, 0, this.width, this.height, argb, argb);
-        RenderSystem.disableBlend();
+    @Override
+    public void render(@NotNull GuiGraphics gg, int mouseX, int mouseY, float partialTick) {
+        renderBackground(gg);
+        super.render(gg, mouseX, mouseY, partialTick);
+        renderTooltip(gg, mouseX, mouseY);
     }
 
     @Override
@@ -83,10 +91,13 @@ public class TestPanelScreen extends AbstractContainerScreen<TestPanelMenu> {
         RenderSystem.setShaderColor(1, 1, 1, 1);
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        gg.blit(new ResourceLocation("custompanels:textures/screens/gui.png"),
-                this.leftPos, this.topPos, 0, 0,
-                this.imageWidth, this.imageHeight,
-                this.imageWidth, this.imageHeight);
+        gg.blit(new ResourceLocation(
+                        configData.getOrDefault("Main.Texture", "custompanels:textures/screens/gui.png")
+                ),
+                leftPos, topPos, 0, 0,
+                imageWidth, imageHeight,
+                imageWidth, imageHeight
+        );
         RenderSystem.disableBlend();
     }
 
@@ -98,85 +109,158 @@ public class TestPanelScreen extends AbstractContainerScreen<TestPanelMenu> {
             Custompanels.LOGGER.error("Clave 'Main.display_name' no encontrada. Usando nombre por defecto.", panelName);
         }
 
-        // Calcular posiciones porcentuales (valores por defecto: 50% = centro)
+
         int titleX = PanelConfigLoader.getPercentageValue(configData, "Main.title_x", 50, this.imageWidth);
         int titleY = PanelConfigLoader.getPercentageValue(configData, "Main.title_y", 50, this.imageHeight);
-
-
         titleX -= this.font.width(title) / 2;
-
-        gg.drawString(
-                this.font,
-                title,
-                titleX,
-                titleY,
-                0xFFFFFF,
-                false
-        );
-    }
-
-    @Override
-    public void init() {
-        super.init();
-        this.leftPos = (this.width - this.imageWidth) / 2;
-        this.topPos = (this.height - this.imageHeight) / 2;
-
-        System.out.println("[DEBUG] GUI posicionada en: ("
-                + leftPos + ", " + topPos + ")");
-
-        createDebugButtons(); // ← ahora carga los de DEBUG
+        gg.drawString(this.font, title, titleX, titleY, 0xFFFFFF, false);
     }
 
     private void createButtons() {
-        int buttonY = 30;
-        // Buscar todas las claves que terminen en ".display"
+        List<Map.Entry<String, String>> entries = new ArrayList<>();
         for (String key : configData.keySet()) {
             if (key.endsWith(".display")) {
-                String buttonPath = key.substring(0, key.lastIndexOf(".display"));
-                String displayText = configData.get(key);
-                String actions = configData.getOrDefault(buttonPath + ".Actions", "");
-
-                // Extraer el ID del botón (última parte de la ruta)
-                String buttonId = buttonPath.substring(buttonPath.lastIndexOf(".") + 1);
-
-                this.addRenderableWidget(
-                        Button.builder(Component.literal(displayText), btn -> {
-                                    Custompanels.PACKET_HANDLER.sendToServer(
-                                            new TestButtonMessage(0, x, y, z, panelName, buttonId, actions)
-                                    );
-                                })
-                                .bounds(this.leftPos + 50, this.topPos + buttonY, 100, 20)
-                                .build()
-                );
-
-                buttonY += 24;
+                entries.add(new AbstractMap.SimpleEntry<>(key, configData.get(key)));
             }
+        }
+
+        // 1. Obtener dimensiones desde config
+        int buttonWidth = PanelConfigLoader.getButtonWidth(configData, imageWidth);
+        int buttonHeight = PanelConfigLoader.getButtonHeight(configData, imageHeight);
+
+        // 2. Calcular márgenes
+        int horizontalMargin = (int)(imageWidth * 0.05);
+        int verticalMargin = (int)(imageHeight * 0.15);
+
+        // 3. Calcular espacio disponible
+        int espacioUtilX = imageWidth - 2 * horizontalMargin;
+        int espacioUtilY = imageHeight - verticalMargin - 50; // Espacio para controles
+
+        // 4. Determinar grid
+        int maxColumnas = Math.max(1, espacioUtilX / (buttonWidth + 10));
+        int maxFilas = Math.max(1, espacioUtilY / (buttonHeight + 5));
+        int botonesPorPagina = maxColumnas * maxFilas;
+
+        // 5. Paginación
+        totalPages = (int) Math.ceil((double) entries.size() / botonesPorPagina);
+        int start = currentPage * botonesPorPagina;
+        int end = Math.min(start + botonesPorPagina, entries.size());
+
+        // 6. Posicionamiento
+        int xStart = leftPos + horizontalMargin;
+        int yStart = topPos + verticalMargin;
+        int currentCol = 0;
+        int currentRow = 0;
+
+        for (int i = start; i < end; i++) {
+            Map.Entry<String, String> e = entries.get(i);
+            String path = e.getKey().substring(0, e.getKey().lastIndexOf(".display"));
+            String text = e.getValue();
+            String actions = configData.getOrDefault(path + ".Actions", "");
+            String id = path.substring(path.lastIndexOf('.') + 1);
+
+            int x = xStart + currentCol * (buttonWidth + 10);
+            int y = yStart + currentRow * (buttonHeight + 5);
+            addButton(x, y, buttonWidth, buttonHeight, text, id, actions);
+
+            // Actualizar posición
+            currentCol++;
+            if (currentCol >= maxColumnas) {
+                currentCol = 0;
+                currentRow++;
+                if (currentRow >= maxFilas) break; // Evitar desborde vertical
+            }
+        }
+        addPaginationControls();
+    }
+
+    private void addButton(int x, int y, int width, int height, String text, String id, String actions) {
+        this.addRenderableWidget(
+                Button.builder(Component.literal(text), btn ->
+                                Custompanels.PACKET_HANDLER.sendToServer(
+                                        new TestButtonMessage(0, this.x, this.y, this.z, panelName, id, actions)
+                                )
+                        )
+                        .bounds(x, y, width, height)
+                        .build()
+        );
+    }
+
+    private void addPaginationControls() {
+        if (totalPages > 1) {
+            int pageY = topPos + (int) (imageHeight * PAGINATOR_Y_RATIO);
+            int leftX = leftPos + (int) (imageWidth * PAGINATOR_X_MARGIN_RATIO);
+            int rightX = leftPos + imageWidth - (int) (imageWidth * PAGINATOR_X_MARGIN_RATIO) - 20;
+
+            int yPos = topPos + imageHeight - 30;
+
+            addPaginator(leftPos + 20, yPos, "<", () -> {
+                currentPage = Math.max(0, currentPage - 1);
+                init();
+            });
+            // Indicador centrado
+            this.addRenderableWidget(
+                    new StaticTextWidget(
+                            leftPos + (imageWidth / 2) - font.width("X/Y") / 2,
+                            yPos,
+                            Component.literal((currentPage + 1) + "/" + totalPages),
+                            font
+                    )
+            );
+
+            // Botón siguiente
+            addPaginator(leftPos + imageWidth - 40, yPos, ">", () -> {
+                currentPage = Math.min(totalPages - 1, currentPage + 1);
+                init();
+            });
         }
     }
 
-    private void createDebugButtons() {
-        int buttonY = 30;
-        for (Map.Entry<String, String> entry : configData.entrySet()) {
-            String key = entry.getKey();
-            if (key.startsWith("DEBUG.") && key.endsWith(".display")) {
-                String id = key.substring("DEBUG.".length(), key.length() - ".display".length());
-                String display = entry.getValue();
-                String actions = configData.getOrDefault("DEBUG." + id + ".Actions", "BAD_OMEN");
+    private void addPaginator(int x, int y, String txt, Runnable action) {
+        this.addRenderableWidget(
+                Button.builder(Component.literal(txt), btn -> action.run())
+                        .bounds(x, y, 20, 20)
+                        .build()
+        );
+    }
 
-                final int currentY = buttonY;
+    private void addEditControls() {
+        int x = leftPos + (int) (imageWidth * BUTTON_AREA_SIDE_RATIO);
+        int y = topPos + (int) (imageHeight * BUTTON_AREA_TOP_RATIO / 2);
+        this.addRenderableWidget(
+                Button.builder(Component.literal("+"), btn -> {
+                            addElement();
+                            currentPage = 0;
+                            this.init();
+                        })
+                        .bounds(x, y, 20, 20)
+                        .build()
+        );
+    }
 
-                this.addRenderableWidget(
-                        Button.builder(Component.literal(display), btn -> {
-                                    Custompanels.PACKET_HANDLER.sendToServer(
-                                            new TestButtonMessage(0, x, y, z, panelName, id, actions)
-                                    );
-                                })
-                                .bounds(this.leftPos + 50, this.topPos + currentY, 100, 20)
-                                .build()
-                );
+    private void addElement() {
+        String newId = "boton_" + System.currentTimeMillis();
+        configData.put("Buttons." + newId + ".display", "Nuevo botón");
+        configData.put("Buttons." + newId + ".Actions", "EJEMPLO_EFECTO");
+        PanelConfigLoader.saveConfig(panelName, world, configData);
+    }
 
-                buttonY += 24;
-            }
+    private static class StaticTextWidget extends AbstractWidget {
+        private final Component text;
+        private final Font font;
+
+        public StaticTextWidget(int x, int y, Component text, Font font) {
+            super(x, y, font.width(text), font.lineHeight, text);
+            this.text = text;
+            this.font = font;
         }
+
+        @Override
+        public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float pt) {
+            guiGraphics.drawString(font, text, getX(), getY(), 0xFFFFFF, false);
+        }
+
+        @Override
+        public void updateWidgetNarration(NarrationElementOutput narration) {}
     }
 }

@@ -16,19 +16,21 @@ public class TestPanelMenu extends AbstractContainerMenu {
     public final int x, y, z;
     public final Player entity;
     public final String panelName;
+    public boolean isEditMode = false;
 
     public TestPanelMenu(int id, Inventory inv, FriendlyByteBuf buf) {
         super(ModMenus.TEST_PANEL.get(), id);
         this.entity = inv.player;
         this.world = entity.level();
 
-        BlockPos pos = buf.readBlockPos(); // Leer como BlockPos
+        // Leer en el orden correcto
+        this.isEditMode = buf.readBoolean();
+        BlockPos pos = buf.readBlockPos();
+        this.panelName = buf.readUtf(Short.MAX_VALUE);
+
         this.x = pos.getX();
         this.y = pos.getY();
         this.z = pos.getZ();
-        this.panelName = buf.readUtf(Short.MAX_VALUE);
-
-        System.out.println("[DEBUG] Posición recibida: " + pos);
     }
 
 

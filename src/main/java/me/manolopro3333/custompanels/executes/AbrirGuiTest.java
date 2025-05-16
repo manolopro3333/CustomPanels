@@ -18,9 +18,11 @@ public class AbrirGuiTest {
     public static void execute(LevelAccessor world, double x, double y, double z, Entity entity, String panelName) {
         if (!(entity instanceof ServerPlayer serverPlayer)) return;
         BlockPos bpos = BlockPos.containing(x, y, z);
+
         FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-        buf.writeBlockPos(bpos); // Usar writeBlockPos en lugar de writeInt
-        buf.writeUtf(panelName);
+        buf.writeBoolean(false); // 1. Modo normal
+        buf.writeBlockPos(bpos); // 2. Posición
+        buf.writeUtf(panelName); // 3. Nombre
 
         NetworkHooks.openScreen(
                 serverPlayer,
@@ -28,11 +30,13 @@ public class AbrirGuiTest {
                     @Override public Component getDisplayName() {
                         return Component.literal("Panel: " + panelName);
                     }
+
                     @Override public AbstractContainerMenu createMenu(int id, Inventory inv, Player player) {
                         return new TestPanelMenu(id, inv, buf);
                     }
                 },
-                (buffer) -> {
+                buffer -> {
+                    buffer.writeBoolean(false);
                     buffer.writeBlockPos(bpos);
                     buffer.writeUtf(panelName);
                 }

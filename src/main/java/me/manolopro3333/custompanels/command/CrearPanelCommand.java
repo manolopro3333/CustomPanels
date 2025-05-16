@@ -27,8 +27,8 @@ public class CrearPanelCommand {
     @SubscribeEvent
     public static void register(RegisterCommandsEvent event) {
         event.getDispatcher().register(
-                Commands.literal("crear-panel")
-                        .requires(src -> src.hasPermission(2))
+                Commands.literal("panel-crear")
+                        .requires(src -> src.hasPermission(4))
                         .then(Commands.argument("nombre", StringArgumentType.word())
                                 .executes(ctx -> crearPanel(
                                         StringArgumentType.getString(ctx, "nombre"),
@@ -58,16 +58,13 @@ public class CrearPanelCommand {
             pw.println("  display_name: Panel " + nombre);
             pw.println("  resolution: 176x166");
             pw.println("  BGTransparency: 35");
+            pw.println("  button_width: 30%");
+            pw.println("  button_height: 5%");
+            pw.println("  Texture: custompanels:textures/screens/gui.png");
             pw.println("  title_x: 50");
             pw.println("  title_y: 5");
             pw.println();
             pw.println("Buttons: {}");
-            pw.println();
-            pw.println("DEBUG:");
-            pw.println("  BotonPrueba:");
-            pw.println("    display: Botón Único");
-            pw.println("    Actions:");
-            pw.println("      - BAD_OMEN");
 
             src.sendSuccess(() -> Component.literal("§aPanel '" + nombre + "' creado en config/custompanels/paneles/" + nombre + ".yml"), false);
             return 1;

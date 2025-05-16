@@ -3,6 +3,7 @@ package me.manolopro3333.custompanels;
 import com.mojang.logging.LogUtils;
 import me.manolopro3333.custompanels.client.ClientRegistry;
 import me.manolopro3333.custompanels.command.CrearPanelCommand;
+import me.manolopro3333.custompanels.command.EditPanelCommand;
 import me.manolopro3333.custompanels.command.PanelCommand;
 import me.manolopro3333.custompanels.init.ModMenus;
 import me.manolopro3333.custompanels.network.TestButtonMessage;
@@ -94,6 +95,7 @@ public class Custompanels {
     public void onRegisterCommands(RegisterCommandsEvent event) {
         PanelCommand.register(event);
         CrearPanelCommand.register(event);
+        EditPanelCommand.register(event);
         LOGGER.info("Comandos registrados");
     }
 

@@ -17,6 +17,75 @@ public class PanelConfigLoader {
     private static final String CONFIG_SUBDIR = "custompanels/paneles";
 
 
+
+    public static void saveConfig(String panelName, Level level, Map<String, String> configData) {
+        Path configPath = getConfigPath(level).resolve(panelName + ".yml");
+        try (PrintWriter writer = new PrintWriter(Files.newBufferedWriter(configPath))) {
+            Map<String, Object> yamlStructure = new LinkedHashMap<>();
+
+            for (Map.Entry<String, String> entry : configData.entrySet()) {
+                String[] keys = entry.getKey().split("\\.");
+                Map<String, Object> currentMap = yamlStructure;
+
+                for (int i = 0; i < keys.length - 1; i++) {
+                    // Verificar si el nodo actual es un mapa válido
+                    Object node = currentMap.get(keys[i]);
+                    if (!(node instanceof Map)) {
+                        // Si no lo es, crear nuevo mapa y reemplazar el valor existente
+                        node = new LinkedHashMap<>();
+                        currentMap.put(keys[i], node);
+                    }
+                    currentMap = (Map<String, Object>) node;
+                }
+
+                // Guardar el valor final
+                currentMap.put(keys[keys.length - 1], entry.getValue());
+            }
+
+            writeYaml(writer, yamlStructure, 0);
+
+        } catch (IOException e) {
+            Custompanels.LOGGER.error("Error al guardar el panel: {}", e.getMessage());
+        }
+    }
+
+    private static void writeYaml(PrintWriter writer, Map<String, Object> data, int indentLevel) {
+        String indent = "  ".repeat(indentLevel);
+
+        for (Map.Entry<String, Object> entry : data.entrySet()) {
+            if (entry.getValue() instanceof Map) {
+                writer.println(indent + entry.getKey() + ":");
+                writeYaml(writer, (Map<String, Object>) entry.getValue(), indentLevel + 1);
+            } else if (entry.getValue() instanceof List) {
+                // Manejar listas si es necesario
+            } else {
+                writer.println(indent + entry.getKey() + ": " + entry.getValue().toString());
+            }
+        }
+    }
+
+    public static int getButtonWidth(Map<String, String> config, int screenWidth) {
+        String value = config.getOrDefault("Main.button_width", "30%");
+        return parseSize(value, screenWidth, 150, 100, 30); // 30% default, max 150px
+    }
+
+    public static int getButtonHeight(Map<String, String> config, int screenHeight) {
+        String value = config.getOrDefault("Main.button_height", "5%");
+        return parseSize(value, screenHeight, 40, 20, 5); // 5% default, max 40px
+    }
+
+    private static int parseSize(String value, int base, int maxPx, int minPx, int defaultPercent) {
+        try {
+            if (value.contains("%")) {
+                int percent = Integer.parseInt(value.replace("%", "").trim());
+                return Math.min(maxPx, Math.max(minPx, (base * percent) / 100));
+            }
+            return Math.min(maxPx, Math.max(minPx, Integer.parseInt(value)));
+        } catch (Exception e) {
+            return Math.min(maxPx, Math.max(minPx, (base * defaultPercent) / 100));
+        }
+    }
+
     public static int getPercentageValue(Map<String, String> config, String key, int defaultValue, int max) {
         String value = config.get(key);
         if (value == null) return (max * defaultValue) / 100;

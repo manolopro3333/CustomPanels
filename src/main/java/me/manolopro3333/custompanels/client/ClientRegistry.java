@@ -1,13 +1,10 @@
 package me.manolopro3333.custompanels.client;
 
 
-import me.manolopro3333.custompanels.Custompanels;
 import me.manolopro3333.custompanels.client.gui.TestPanelScreen;
 import me.manolopro3333.custompanels.init.ModMenus;
 import net.minecraft.client.gui.screens.MenuScreens;
-import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 
 public class ClientRegistry {
 

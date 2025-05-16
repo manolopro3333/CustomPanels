@@ -28,7 +28,7 @@ public class PanelCommand {
     public static void register(RegisterCommandsEvent evt) {
         evt.getDispatcher().register(
                 Commands.literal("panel")
-                        .requires(src -> src.hasPermission(0))
+                        .requires(src -> src.hasPermission(4))
                         .then(Commands.argument("nombre", StringArgumentType.word())
                                 .suggests(SUGGEST_PANELES)
                                 .executes(ctx -> {
