@@ -160,21 +160,43 @@ public class PanelConfigLoader {
         }
     }
 
+    public static List<Map<String, String>> getActions(Map<String, String> config, String buttonId) {
+        List<Map<String, String>> actions = new ArrayList<>();
+        int index = 0;
+        while (true) {
+            String baseKey = "Buttons." + buttonId + ".Actions." + index;
+            String type = config.get(baseKey);
+            if (type == null) break;
+
+            Map<String, String> actionData = new HashMap<>();
+            actionData.put("TYPE", type);
+
+            // Capturar todos los parámetros de la acción
+            config.keySet().stream()
+                    .filter(k -> k.startsWith(baseKey + "."))
+                    .forEach(k -> {
+                        String param = k.substring(k.lastIndexOf('.') + 1);
+                        actionData.put(param.toUpperCase(), config.get(k));
+                    });
+
+            actions.add(actionData);
+            index++;
+        }
+        return actions;
+    }
+
     private static Path getConfigPath(Level level) {
-        // 1. Verificar si estamos en un mundo de singleplayer (aunque sea desde el cliente)
-        if (isSingleplayerWorld(level)) {
-            System.out.println("[DEBUG] w4 - Singleplayer detectado (desde cliente)");
-            return getSingleplayerConfigPath(level);
+        if (level instanceof ServerLevel serverLevel) {
+            if (serverLevel.getServer().isSingleplayer()) {
+                return serverLevel.getServer().getWorldPath(LevelResource.ROOT)
+                        .resolve("config")
+                        .resolve(CONFIG_SUBDIR);
+            } else {
+                // Servidor dedicado
+                return Paths.get("config").resolve(CONFIG_SUBDIR);
+            }
         }
-
-        // 2. Para servidor dedicado
-        if (level instanceof ServerLevel serverLevel && !serverLevel.getServer().isSingleplayer()) {
-            System.out.println("[DEBUG] w5 - Servidor dedicado");
-            return Paths.get("config").resolve(CONFIG_SUBDIR);
-        }
-
-        // 3. Para cliente puro (multijugador) o fallback
-        System.out.println("[DEBUG] w2 - Entorno cliente estándar");
+        // Cliente en multiplayer
         return FMLPaths.CONFIGDIR.get().resolve(CONFIG_SUBDIR);
     }
 

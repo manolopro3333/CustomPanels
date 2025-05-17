@@ -1,9 +1,11 @@
 package me.manolopro3333.custompanels.client.gui;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import io.netty.buffer.Unpooled;
 import me.manolopro3333.custompanels.Custompanels;
 import me.manolopro3333.custompanels.config.PanelConfigLoader;
 import me.manolopro3333.custompanels.network.TestButtonMessage;
+import me.manolopro3333.custompanels.world.inventory.EditPanelMenu;
 import me.manolopro3333.custompanels.world.inventory.TestPanelMenu;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -11,6 +13,8 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
@@ -21,7 +25,10 @@ import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
+@OnlyIn(Dist.CLIENT)
 public class TestPanelScreen extends AbstractContainerScreen<TestPanelMenu> {
     private final Level world;
     private final int x, y, z;
@@ -175,15 +182,37 @@ public class TestPanelScreen extends AbstractContainerScreen<TestPanelMenu> {
     }
 
     private void addButton(int x, int y, int width, int height, String text, String id, String actions) {
-        this.addRenderableWidget(
-                Button.builder(Component.literal(text), btn ->
-                                Custompanels.PACKET_HANDLER.sendToServer(
-                                        new TestButtonMessage(0, this.x, this.y, this.z, panelName, id, actions)
-                                )
-                        )
-                        .bounds(x, y, width, height)
-                        .build()
-        );
+        Button.Builder builder = Button.builder(Component.literal(text), btn -> {
+            if (menu.isEditMode) {
+                // Cerrar pantalla actual
+                this.minecraft.setScreen(null);
+
+                // Crear buffer con TODOS los datos necesarios
+                FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+                buf.writeBoolean(true); // isEditMode
+                buf.writeBlockPos(new BlockPos(menu.x, menu.y, menu.z));
+                buf.writeUtf(menu.panelName);
+                buf.writeUtf(id); // ID del botón (¡CRUCIAL!)
+
+                // Crear menú de edición con referencia al original
+                EditPanelMenu editMenu = new EditPanelMenu(0, minecraft.player.getInventory(), buf);
+                TestPanelMenu originalMenu = this.menu;
+
+                // Crear pantalla de edición
+                this.minecraft.setScreen(new EditButtonScreen(
+                        editMenu,
+                        minecraft.player.getInventory(),
+                        Component.literal("Editando: " + id),
+                        originalMenu // Pasar referencia del menú padre
+                ));
+            } else {
+                Custompanels.PACKET_HANDLER.sendToServer(
+                        new TestButtonMessage(0, this.x, this.y, this.z, panelName, id, actions)
+                );
+            }
+        });
+
+        this.addRenderableWidget(builder.bounds(x, y, width, height).build());
     }
 
     private void addPaginationControls() {

@@ -6,6 +6,10 @@ import me.manolopro3333.custompanels.init.ModMenus;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
+
+@OnlyIn(Dist.CLIENT)
 public class ClientRegistry {
 
     @SuppressWarnings("removal")
@@ -21,4 +25,7 @@ public class ClientRegistry {
             MenuScreens.register(ModMenus.TEST_PANEL.get(), TestPanelScreen::new);
         });
     }
+
+
+
 }

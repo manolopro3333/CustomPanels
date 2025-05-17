@@ -27,7 +27,7 @@ public class CrearPanelCommand {
     @SubscribeEvent
     public static void register(RegisterCommandsEvent event) {
         event.getDispatcher().register(
-                Commands.literal("panel-crear")
+                Commands.literal("panel_crear")
                         .requires(src -> src.hasPermission(4))
                         .then(Commands.argument("nombre", StringArgumentType.word())
                                 .executes(ctx -> crearPanel(

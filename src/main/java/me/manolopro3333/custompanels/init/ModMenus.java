@@ -1,5 +1,6 @@
 package me.manolopro3333.custompanels.init;
 
+import me.manolopro3333.custompanels.world.inventory.EditPanelMenu;
 import me.manolopro3333.custompanels.world.inventory.TestPanelMenu;
 
 import me.manolopro3333.custompanels.Custompanels;
@@ -21,4 +22,12 @@ public class ModMenus {
                             new TestPanelMenu(id, inv, buf)
                     )
             );
+
+    public static final RegistryObject<MenuType<EditPanelMenu>> EDIT_PANEL =
+            REGISTRY.register("edit_panel", () ->
+                    IForgeMenuType.create((id, inv, buf) ->
+                            new EditPanelMenu(id, inv, buf)
+                    )
+            );
+
 }
